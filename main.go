@@ -21,15 +21,17 @@ func main() {
 	}
 	defer conn.Close()
 
+	r := NewRESP(conn)
+
 	for {
-		buf := make([]byte, 1024)
-		_, err := conn.Read(buf)
+		data, err := r.read()
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
-			log.Fatalf("reading from client error: %s\n", err.Error())
+			log.Fatalln(err)
 		}
+		fmt.Println(data)
 		conn.Write([]byte("+OK\r\n"))
 	}
 }
