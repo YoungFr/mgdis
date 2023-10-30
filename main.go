@@ -31,7 +31,11 @@ func main() {
 			}
 			log.Fatalln(err)
 		}
-		fmt.Println(data)
-		conn.Write([]byte("+OK\r\n"))
+		fmt.Printf("%#v\n", data)
+
+		reply := Data{dataType: "SIMPLE_STRING", simpleStr: "OK"}
+		if err := r.write(reply); err != nil {
+			log.Fatalln(err)
+		}
 	}
 }
