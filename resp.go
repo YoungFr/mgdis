@@ -40,23 +40,23 @@ type Data struct {
 
 func (d Data) marshal() []byte {
 	switch d.dataType {
-	case "SIMPLE_STRING":
+	case datatypes[SIMPLE_STRING]:
 		{
 			return d.marshalSimpleString()
 		}
-	case "ERROR":
+	case datatypes[ERROR]:
 		{
 			return d.marshalError()
 		}
-	case "INTEGER":
+	case datatypes[INTEGER]:
 		{
 			return d.marshalInteger()
 		}
-	case "BULK_STRING":
+	case datatypes[BULK_STRING]:
 		{
 			return d.marshalBulk()
 		}
-	case "ARRAY":
+	case datatypes[ARRAY]:
 		{
 			return d.marshalArray()
 		}
