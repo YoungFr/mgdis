@@ -4,11 +4,10 @@ import (
 	"bufio"
 	"errors"
 	"io"
-	"net"
 	"strconv"
 )
 
-// 在 RESP2 协议中定义了以下五种数据类型
+// 在 RESP2 协议中定义的五种数据类型
 const (
 	SIMPLE_STRING = '+' // 简单字符串
 	ERROR         = '-' // 错误消息
@@ -25,8 +24,14 @@ var datatypes = map[byte]string{
 	ARRAY:         "ARRAY",
 }
 
+// 客户端的命令和服务器的执行结果都使用 Data 结构体来表示
 // 字段 dataType 的值是 "SIMPLE_STRING"、"ERROR"、"INTEGER"、"BULK_STRING" 和 "ARRAY" 之一
 // 剩余的字段根据 dataType 的值来相应地设置
+//
+// 客户端的命令 (命令名 + 参数) 总是被编码成一个多行字符串的数组
+// 所以在解析客户端发来的消息时只需要处理 BULK_STRING 和 ARRAY 类型
+//
+// 服务器的执行结果根据命令的不同可以是任何格式
 type Data struct {
 	dataType    string
 	simpleStr   string
@@ -38,25 +43,26 @@ type Data struct {
 	isNullArray bool
 }
 
+// 将一个 Data 结构体根据 RESP 协议的编码格式转换成字节数组
 func (d Data) marshal() []byte {
 	switch d.dataType {
-	case datatypes[SIMPLE_STRING]:
+	case "SIMPLE_STRING":
 		{
 			return d.marshalSimpleString()
 		}
-	case datatypes[ERROR]:
+	case "ERROR":
 		{
 			return d.marshalError()
 		}
-	case datatypes[INTEGER]:
+	case "INTEGER":
 		{
 			return d.marshalInteger()
 		}
-	case datatypes[BULK_STRING]:
+	case "BULK_STRING":
 		{
 			return d.marshalBulk()
 		}
-	case datatypes[ARRAY]:
+	case "ARRAY":
 		{
 			return d.marshalArray()
 		}
@@ -139,15 +145,16 @@ func (d Data) marshalArray() []byte {
 	return bytes
 }
 
+// 序列化与反序列化
 type RESP struct {
 	reader *bufio.Reader
 	writer *bufio.Writer
 }
 
-func NewRESP(conn net.Conn) *RESP {
+func NewRESP(rwc io.ReadWriteCloser) *RESP {
 	return &RESP{
-		reader: bufio.NewReader(conn),
-		writer: bufio.NewWriter(conn),
+		reader: bufio.NewReader(rwc),
+		writer: bufio.NewWriter(rwc),
 	}
 }
 
@@ -164,8 +171,6 @@ func (r *RESP) write(d Data) error {
 }
 
 // 反序列化：RESP => GO-STRUCT
-// 由于客户端总是将命令和参数编码成一个多行字符串的数组
-// 所以在解析客户端发来的消息时只需要处理 BULK_STRING 和 ARRAY 类型
 func (r *RESP) read() (data Data, err error) {
 	dataType, err := r.reader.ReadByte()
 	if err != nil {
@@ -181,10 +186,10 @@ func (r *RESP) read() (data Data, err error) {
 			return r.readArray()
 		}
 	}
-	return data, errUnknownClientDataType
+	return data, errUnknownRequestDataType
 }
 
-var errUnknownClientDataType = errors.New("unknown client data type")
+var errUnknownRequestDataType = errors.New("unknown request data type")
 
 // 循环读入字节直到遇到 '\r' 和 '\n' 字符为止
 func (r *RESP) readLine() (line []byte, n int, err error) {
