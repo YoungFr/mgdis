@@ -7,6 +7,7 @@ import (
 	"strconv"
 )
 
+// https://redis.io/docs/reference/protocol-spec/
 // 在 RESP2 协议中定义的五种数据类型
 const (
 	SIMPLE_STRING = '+' // 简单字符串
@@ -27,10 +28,8 @@ var datatypes = map[byte]string{
 // 客户端的命令和服务器的执行结果都使用 Data 结构体来表示
 // 字段 dataType 的值是 "SIMPLE_STRING"、"ERROR"、"INTEGER"、"BULK_STRING" 和 "ARRAY" 之一
 // 剩余的字段根据 dataType 的值来相应地设置
-//
 // 客户端的命令 (命令名 + 参数) 总是被编码成一个多行字符串的数组
 // 所以在解析客户端发来的消息时只需要处理 BULK_STRING 和 ARRAY 类型
-//
 // 服务器的执行结果根据命令的不同可以是任何格式
 type Data struct {
 	dataType    string
@@ -47,29 +46,17 @@ type Data struct {
 func (d Data) marshal() []byte {
 	switch d.dataType {
 	case "SIMPLE_STRING":
-		{
-			return d.marshalSimpleString()
-		}
+		return d.marshalSimpleString()
 	case "ERROR":
-		{
-			return d.marshalError()
-		}
+		return d.marshalError()
 	case "INTEGER":
-		{
-			return d.marshalInteger()
-		}
+		return d.marshalInteger()
 	case "BULK_STRING":
-		{
-			return d.marshalBulk()
-		}
+		return d.marshalBulk()
 	case "ARRAY":
-		{
-			return d.marshalArray()
-		}
+		return d.marshalArray()
 	default:
-		{
-			return make([]byte, 0)
-		}
+		return make([]byte, 0)
 	}
 }
 
@@ -159,7 +146,7 @@ func NewRESP(rwc io.ReadWriteCloser) *RESP {
 }
 
 // 序列化：GO-STRUCT => RESP
-func (r *RESP) write(d Data) error {
+func (r *RESP) Write(d Data) error {
 	if _, err := r.writer.Write(d.marshal()); err != nil {
 		return err
 	}
@@ -171,20 +158,16 @@ func (r *RESP) write(d Data) error {
 }
 
 // 反序列化：RESP => GO-STRUCT
-func (r *RESP) read() (data Data, err error) {
+func (r *RESP) Read() (data Data, err error) {
 	dataType, err := r.reader.ReadByte()
 	if err != nil {
 		return data, err
 	}
 	switch dataType {
 	case BULK_STRING:
-		{
-			return r.readBulk()
-		}
+		return r.readBulk()
 	case ARRAY:
-		{
-			return r.readArray()
-		}
+		return r.readArray()
 	}
 	return data, errUnknownRequestDataType
 }
@@ -266,7 +249,7 @@ func (r *RESP) readArray() (data Data, err error) {
 	data.array = make([]Data, 0)
 	var i int64
 	for i < arrlen {
-		d, err := r.read()
+		d, err := r.Read()
 		if err != nil {
 			return data, err
 		}
